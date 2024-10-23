@@ -1,4 +1,11 @@
-//crc32 function based on https://stackoverflow.com/a/18639999
+/**
+ * Helper functions used throughout the module.
+ * Includes functions for computing CRC32, generating Cartesian products,
+ * grouping array items, and filtering unique array items.
+ */
+
+// Generates a table of CRC32 remainders for all possible byte values.
+// Based on https://stackoverflow.com/a/18639999
 const makeCRCTable = () => {
   let c;
   const crcTable: number[] = [];
@@ -11,8 +18,15 @@ const makeCRCTable = () => {
   }
   return crcTable;
 };
+
+// Precomputed CRC32 table for fast computations.
 const crcTable = makeCRCTable();
 
+/**
+ * Computes the CRC32 hash of a given string.
+ * @param str - The input string to hash.
+ * @returns The CRC32 hash as an 8-character hexadecimal string.
+ */
 export const crc32 = (str: string): string => {
   let crc = 0 ^ -1;
   for (let i = 0; i < str.length; i++) {
@@ -22,6 +36,12 @@ export const crc32 = (str: string): string => {
   return value.toString(16).padStart(8, "0");
 };
 
+/**
+ * Generates all possible pairs (Cartesian product) from two arrays.
+ * @param ar - The first array.
+ * @param br - The second array.
+ * @returns An array of pairs [A, B] where A is from ar and B is from br.
+ */
 export function arrayDiallel<A, B>(ar: A[], br: B[]): [A, B][] {
   const res: [A, B][] = [];
   for (const a of ar) {
@@ -32,6 +52,12 @@ export function arrayDiallel<A, B>(ar: A[], br: B[]): [A, B][] {
   return res;
 }
 
+/**
+ * Groups items in an array based on a key function.
+ * @param items - The array of items to group.
+ * @param keyFn - A function that returns a string key for each item.
+ * @returns An object where each key corresponds to an array of items with that key.
+ */
 export function groupArrayItems<T>(
   items: T[],
   keyFn: (value: T) => string,
@@ -47,6 +73,11 @@ export function groupArrayItems<T>(
   return res;
 }
 
+/**
+ * Filters an array to contain only unique items.
+ * @param items - The array to filter.
+ * @returns A new array containing only unique items.
+ */
 export function uniqueArrayItems<T>(items: T[]): T[] {
   return items.filter((it, index) => items.indexOf(it) == index);
 }

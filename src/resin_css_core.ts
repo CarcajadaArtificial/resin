@@ -1,7 +1,18 @@
-//----------
+/**
+ * Core functions for processing and extracting nested CSS styles.
+ * Provides utilities to manipulate CSS templates and selectors,
+ * and to generate normalized CSS outputs.
+ */
 
 import { arrayDiallel, groupArrayItems, uniqueArrayItems } from "./helpers.ts";
 
+/**
+ * Processes a CSS template string, interpolating values and handling class names.
+ * @param template - The template strings array.
+ * @param values - The interpolated values, which can be strings, numbers, objects with sourceCssText, or booleans.
+ * @param classNameToSourceCssTextMap - Optional mapping of class names to their source CSS text.
+ * @returns A processed CSS string.
+ */
 export function extractCssTemplate(
   template: TemplateStringsArray,
   values: (string | number | { sourceCssText: string } | boolean)[],
@@ -20,7 +31,7 @@ export function extractCssTemplate(
       value === undefined ||
       value === ""
     ) {
-      //skip
+      // Skip falsy values.
     } else {
       text += value.toString();
     }
@@ -28,34 +39,46 @@ export function extractCssTemplate(
   text += template[i];
   return (
     text
-      //remove newlines
+      // Remove newlines.
       .replace(/\s*\r?\n\s*/g, "")
-      //remove spaces
+      // Remove spaces around certain characters.
       .replace(/\s*([:{;~,])\s*/g, (_, p1) => p1)
-      //remove double semicolon
+      // Remove double semicolons.
       .replace(/;;/g, ";")
   );
 }
 
+/**
+ * Transforms CSS body text into normalized lines for further processing.
+ * Removes comments, unnecessary spaces, and splits into individual lines.
+ * @param cssBodyText - The raw CSS body text.
+ * @returns An array of normalized CSS lines.
+ */
 function transformCssBodyTextToNormalizedLines(cssBodyText: string) {
   return (
     cssBodyText
-      //remove comments
+      // Remove comments.
       .replace(/\/\*.*?\*\//g, "")
       .replace(/\/\/.*\r?\n/g, "")
-      //remove spaces
+      // Remove spaces around certain characters.
       .replace(/\s*([:{;~,])\s*/g, (_, p1) => p1)
       .replace(/&\s+\./g, "&.")
-      //normalize newlines
+      // Normalize newlines.
       .replace(/\r?\n/g, "")
       .replace(/[;{}]/g, (m) => `${m}\n`)
-      //split lines
+      // Split into lines.
       .split("\n")
       .map((a) => a.trim())
       .filter((a) => !!a)
   );
 }
 
+/**
+ * Concatenates a CSS selector path with a segment, handling special cases like '&'.
+ * @param path - The base CSS selector path.
+ * @param seg - The segment to concatenate.
+ * @returns The concatenated CSS selector path.
+ */
 export function concatPathSegment(path: string, seg: string) {
   if (seg.includes("&")) {
     return seg.replace(/&/g, path).trim();
@@ -67,6 +90,12 @@ export function concatPathSegment(path: string, seg: string) {
   }
 }
 
+/**
+ * Extends concatPathSegment to handle multiple paths and segments, generating combinations.
+ * @param srcPath - The source selector paths, possibly comma-separated.
+ * @param inputSeg - The input segments to concatenate, possibly comma-separated.
+ * @returns A string of concatenated selector paths.
+ */
 export function concatPathSegmentEx(srcPath: string, inputSeg: string) {
   const srcPaths = srcPath.split(",");
   const inputSegs = inputSeg.split(",");
@@ -75,6 +104,11 @@ export function concatPathSegmentEx(srcPath: string, inputSeg: string) {
     .join(",");
 }
 
+/**
+ * Combines multiple CSS selector paths into a single path.
+ * @param selectorPaths - An array of selector paths to combine.
+ * @returns The combined selector path.
+ */
 export function combineSelectorPaths(selectorPaths: string[]) {
   if (selectorPaths.length >= 2) {
     const head = selectorPaths[0];
@@ -85,6 +119,11 @@ export function combineSelectorPaths(selectorPaths: string[]) {
   }
 }
 
+/**
+ * Combines multiple media query specifications into a single media query.
+ * @param mediaQuerySpecs - An array of media query strings.
+ * @returns A combined media query string.
+ */
 export function combineMediaQueries(mediaQuerySpecs: string[]): string {
   if (mediaQuerySpecs.length == 0) {
     return "";
@@ -102,12 +141,21 @@ export function combineMediaQueries(mediaQuerySpecs: string[]): string {
   return `${head} ${parts.join(" and ")}`;
 }
 
+/**
+ * Represents a slot for CSS rules, including selector paths, group rules, and CSS lines.
+ */
 type CssSlot = {
   selectorPath: string;
   groupRuleSpec: string;
   cssLines: string[];
 };
 
+/**
+ * Prepares a CSS slot by combining narrowers (selectors and media queries) and updating the cssSlots map.
+ * @param narrowers - An array of selectors and media queries.
+ * @param cssSlots - The map of existing CSS slots.
+ * @returns The key of the prepared CSS slot.
+ */
 function prepareCssSlot(
   narrowers: string[],
   cssSlots: Record<string, CssSlot>,
@@ -144,6 +192,11 @@ function prepareCssSlot(
   return slotKey;
 }
 
+/**
+ * Converts an array of CSS slots into a formatted CSS string.
+ * @param slots - An array of CSS slots to stringify.
+ * @returns A formatted CSS string representing the slots.
+ */
 function stringifyCssSlots(slots: CssSlot[]) {
   const { groupRuleSpec } = slots[0];
   const cssContentLines = slots.map(
@@ -157,6 +210,11 @@ function stringifyCssSlots(slots: CssSlot[]) {
   }
 }
 
+/**
+ * Collects unique keyframe names from an array of CSS slots.
+ * @param slots - An array of CSS slots to process.
+ * @returns An array of unique keyframe names.
+ */
 function collectKeyframeNames(slots: CssSlot[]): string[] {
   return uniqueArrayItems(
     slots.filter((slot) => slot.groupRuleSpec.startsWith("@keyframes"))
@@ -165,6 +223,13 @@ function collectKeyframeNames(slots: CssSlot[]): string[] {
   );
 }
 
+/**
+ * Extracts nested CSS from a given CSS body text, starting from a top-level selector.
+ * Processes nested rules, media queries, and keyframes, and normalizes selectors.
+ * @param cssBodyText - The raw CSS body text to process.
+ * @param topSelector - The top-level selector to scope the CSS under.
+ * @returns The processed, flattened CSS text.
+ */
 export function extractNestedCss(
   cssBodyText: string,
   topSelector: string,
@@ -200,10 +265,8 @@ export function extractNestedCss(
   );
 
   let cssText = [
-    ...Object.values(slotsGroupedByConditionalGroupRule)
-      .map(stringifyCssSlots),
-  ]
-    .join("\n");
+    ...Object.values(slotsGroupedByConditionalGroupRule).map(stringifyCssSlots),
+  ].join("\n");
 
   const keyframeNames = collectKeyframeNames(listSlots);
   const topClassName = topSelector.slice(1);
